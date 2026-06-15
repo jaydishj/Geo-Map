@@ -17,7 +17,7 @@ st.set_page_config(
 # LOAD DATA
 # =====================================
 df = pd.read_excel(
-    r"E:\ONGOING PROJECTS\geopmappig.xlsx"
+    r"geopmappig.xlsx"
 )
 
 df.columns = df.columns.str.strip()
