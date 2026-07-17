@@ -43,13 +43,21 @@ place = st.sidebar.selectbox(
     ["All"] + sorted(df["Place"].unique())
 )
 
-# Family Filter (Multiselect)
-family_options = sorted(df["Family"].dropna().unique()) if "Family" in df.columns else []
-selected_families = st.sidebar.multiselect(
-    "Select Family",
-    options=family_options,
-    default=[]
-)
+# === TOP 20 FAMILIES FILTER ===
+if "Family" in df.columns:
+    # Get top 20 families by count
+    family_counts = df["Family"].value_counts().head(20)
+    top_20_families = sorted(family_counts.index.tolist())
+    
+    selected_families = st.sidebar.multiselect(
+        "Select Family (Top 20)",
+        options=top_20_families,
+        default=[],
+        help="Showing only the 20 most common families"
+    )
+else:
+    selected_families = []
+    st.sidebar.warning("Family column not found")
 
 # Plant Name Search
 plant_search = st.sidebar.text_input("🔎 Search Plant Name", placeholder="Type plant name...")
@@ -67,7 +75,7 @@ if place != "All":
 if selected_families:
     filtered_df = filtered_df[filtered_df["Family"].isin(selected_families)]
 
-# Plant Name Search (partial match, case insensitive)
+# Plant Name Search
 if plant_search:
     filtered_df = filtered_df[
         filtered_df["Plant_Name"].str.contains(plant_search, case=False, na=False)
@@ -88,33 +96,21 @@ st.subheader("🗺️ Plant Distribution Map")
 
 m = folium.Map(location=[20, 0], zoom_start=2, tiles=None)
 
-# Tile Layers
 folium.TileLayer("OpenStreetMap", name="Street Map").add_to(m)
-folium.TileLayer(
-    tiles="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
-    attr="Google", name="Google Satellite"
-).add_to(m)
-folium.TileLayer(
-    tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}",
-    attr="Google", name="Google Hybrid"
-).add_to(m)
-folium.TileLayer(
-    tiles="https://mt1.google.com/vt/lyrs=p&x={x}&y={y}&z={z}",
-    attr="Google", name="Google Terrain"
-).add_to(m)
+folium.TileLayer(tiles="https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}", attr="Google", name="Google Satellite").add_to(m)
+folium.TileLayer(tiles="https://mt1.google.com/vt/lyrs=y&x={x}&y={y}&z={z}", attr="Google", name="Google Hybrid").add_to(m)
+folium.TileLayer(tiles="https://mt1.google.com/vt/lyrs=p&x={x}&y={y}&z={z}", attr="Google", name="Google Terrain").add_to(m)
 
 Fullscreen().add_to(m)
 marker_cluster = MarkerCluster().add_to(m)
 
-# Add Markers
 for _, row in filtered_df.iterrows():
     popup = f"""
     <h4>{row['Plant_Name']}</h4>
     <b>Scientific Name:</b> {row['Scientific_Name']}<br>
     <b>Family:</b> {row.get('Family', 'N/A')}<br>
     <b>Place:</b> {row['Place']}<br>
-    <b>Latitude:</b> {row['Latitude']}<br>
-    <b>Longitude:</b> {row['Longitude']}
+    <b>Lat:</b> {row['Latitude']} | <b>Lon:</b> {row['Longitude']}
     """
     folium.Marker(
         location=[row["Latitude"], row["Longitude"]],
@@ -123,7 +119,6 @@ for _, row in filtered_df.iterrows():
         icon=folium.Icon(color="green", icon="leaf")
     ).add_to(marker_cluster)
 
-# Auto-fit bounds
 if len(filtered_df) > 0:
     bounds = [
         [filtered_df["Latitude"].min(), filtered_df["Longitude"].min()],
@@ -147,12 +142,9 @@ if len(filtered_df) > 0:
     
     st.markdown(f"""
     ### {plant['Plant_Name']}
-    **Plant ID:** {plant.get('Plant_ID', 'N/A')}  
     **Scientific Name:** {plant['Scientific_Name']}  
     **Family:** {plant.get('Family', 'N/A')}  
-    **Place:** {plant['Place']}  
-    **Latitude:** {plant['Latitude']}  
-    **Longitude:** {plant['Longitude']}
+    **Place:** {plant['Place']}
     """)
 else:
     st.warning("No plants found matching your filters.")
